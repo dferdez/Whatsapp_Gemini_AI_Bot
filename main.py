@@ -49,9 +49,9 @@ def send(answer):
     }
     data = {
         "messaging_product": "whatsapp",
-        "to": f"{phone}",
+        "to": phone,
         "type": "text",
-        "text": {"body": f"{answer}"},
+        "text": {"body": answer},
     }
     response = requests.post(url, headers=headers, json=data)
     return response
@@ -99,8 +99,8 @@ def webhook():
 
             if data["type"] == "text":
                 prompt = data["text"]["body"]
-                convo.send_message(prompt)
-                send(convo.last.text)
+                response = convo.send_message(prompt)
+                send(response.text)
 
             else:
                 # Manejo de otros tipos de mensajes (audio, imagen, documento)
@@ -122,7 +122,7 @@ def webhook():
                         pix.save(destination)
                         file = genai.upload_file(path=destination, display_name="tempfile")
                         response = model.generate_content(["What is this", file])
-                        answer = response._result.candidates[0].content.parts[0].text
+                        answer = response.candidates[0].content.parts[0].text
                         convo.send_message(f"This message is created by an LLM model based on the image prompt of user, reply to the user based on this: {answer}")
                         send(convo.last.text)
                         remove(destination)
@@ -134,7 +134,7 @@ def webhook():
 
                 file = genai.upload_file(path=filename, display_name="tempfile")
                 response = model.generate_content(["What is this", file])
-                answer = response._result.candidates[0].content.parts[0].text
+                answer = response.candidates[0].content.parts[0].text
 
                 remove("/tmp/temp_image.jpg", "/tmp/temp_audio.mp3")
                 convo.send_message(f"This is a voice/image message from the user transcribed by an LLM model, reply to the user based on the transcription: {answer}")
@@ -152,4 +152,3 @@ def webhook():
 
 if __name__ == "__main__":
     app.run(debug=True, port=8000)
-
