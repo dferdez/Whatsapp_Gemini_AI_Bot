@@ -1,17 +1,15 @@
-
 import google.generativeai as genai
-from flask import Flask,request,jsonify
+from flask import Flask, request, jsonify
 import requests
 import os
 import fitz
 
-wa_token=os.environ.get("WA_TOKEN")
+wa_token = os.environ.get("WA_TOKEN")
 genai.configure(api_key=os.environ.get("GEN_API"))
-phone_id=os.environ.get("PHONE_ID")
-phone=os.environ.get("PHONE_NUMBER")
-name="Your name or nickname" #The bot will consider this person as its owner or creator
-bot_name="Give a name to your bot" #This will be the name of your bot, eg: "Hello I am Astro Bot"
-model_name="gemini-1.5-flash-latest" #Switch to "gemini-1.0-pro" or any free model, if "gemini-1.5-flash" becomes paid in future.
+phone_id = os.environ.get("PHONE_ID")
+name = "LOUIS"  # The bot will consider this person as its owner or creator
+bot_name = "Hugo"  # This will be the name of your bot, e.g., "Hello I am Astro Bot"
+model_name = "gemini-1.5-flash-latest"  # Switch to "gemini-1.0-pro" or any free model, if "gemini-1.5-flash" becomes paid in future.
 
 app = Flask(__name__)
 
@@ -41,7 +39,7 @@ model = genai.GenerativeModel(
 user_histories = {}
 
 # Función para enviar respuestas a WhatsApp
-def send(answer):
+def send(answer, user_id):
     url = f"https://graph.facebook.com/v18.0/{phone_id}/messages"
     headers = {
         'Authorization': f'Bearer {wa_token}',
@@ -49,7 +47,7 @@ def send(answer):
     }
     data = {
         "messaging_product": "whatsapp",
-        "to": phone,
+        "to": user_id,
         "type": "text",
         "text": {"body": answer},
     }
@@ -83,7 +81,7 @@ def webhook():
             data = request.get_json()["entry"][0]["changes"][0]["value"]["messages"][0]
             user_id = data["from"]
 
-            # Verifica si hay un historial previo, si no lo hay, inicializa uno.
+            # Verifica si hay un historial previo; si no lo hay, inicializa uno.
             if user_id not in user_histories:
                 user_histories[user_id] = model.start_chat(history=[
                     f'''I am using Gemini API to create a personal bot in WhatsApp,
@@ -100,7 +98,7 @@ def webhook():
             if data["type"] == "text":
                 prompt = data["text"]["body"]
                 response = convo.send_message(prompt)
-                send(response.text)
+                send(response.text, user_id)
 
             else:
                 # Manejo de otros tipos de mensajes (audio, imagen, documento)
@@ -124,10 +122,11 @@ def webhook():
                         response = model.generate_content(["What is this", file])
                         answer = response.candidates[0].content.parts[0].text
                         convo.send_message(f"This message is created by an LLM model based on the image prompt of user, reply to the user based on this: {answer}")
-                        send(convo.last.text)
+                        send(convo.last.text, user_id)
                         remove(destination)
                 else:
-                    send("This format is not Supported by the bot ☹")
+                    send("This format is not supported by the bot ☹", user_id)
+                    return jsonify({"status": "unsupported_format"}), 200
 
                 with open(filename, "wb") as temp_media:
                     temp_media.write(media_download_response.content)
@@ -138,7 +137,7 @@ def webhook():
 
                 remove("/tmp/temp_image.jpg", "/tmp/temp_audio.mp3")
                 convo.send_message(f"This is a voice/image message from the user transcribed by an LLM model, reply to the user based on the transcription: {answer}")
-                send(convo.last.text)
+                send(convo.last.text, user_id)
                 files = genai.list_files()
                 for file in files:
                     file.delete()
@@ -152,3 +151,4 @@ def webhook():
 
 if __name__ == "__main__":
     app.run(debug=True, port=8000)
+
