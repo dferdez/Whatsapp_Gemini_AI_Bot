@@ -1,15 +1,32 @@
 import google.generativeai as genai
+from google.auth.credentials import AnonymousCredentials
 from flask import Flask, request, jsonify
 import requests
 import os
 import fitz
+from dotenv import load_dotenv
+import logging
 
+# Cargar variables de entorno
+load_dotenv()
+
+# Configurar nivel de registro
+logging.getLogger('google.auth.transport._mtls_helper').setLevel(logging.ERROR)
+logging.getLogger('google.auth.compute_engine._metadata').setLevel(logging.ERROR)
+
+# Variables de entorno
 wa_token = os.environ.get("WA_TOKEN")
-genai.configure(api_key=os.environ.get("GEN_API"))
+gen_api_key = os.environ.get("GEN_API")
 phone_id = os.environ.get("PHONE_ID")
-name = "LOUIS"  # The bot will consider this person as its owner or creator
-bot_name = "Hugo"  # This will be the name of your bot, e.g., "Hello I am Astro Bot"
-model_name = "gemini-1.5-flash-latest"  # Switch to "gemini-1.0-pro" or any free model, if "gemini-1.5-flash" becomes paid in future.
+name = "Your name or nickname"  # The bot will consider this person as its owner or creator
+bot_name = "Give a name to your bot"  # This will be the name of your bot
+model_name = "gemini-1.5-flash-latest"
+
+# Configurar genai sin detección de credenciales predeterminadas
+genai.configure(
+    api_key=gen_api_key,
+    credentials=AnonymousCredentials(),
+)
 
 app = Flask(__name__)
 
@@ -151,4 +168,3 @@ def webhook():
 
 if __name__ == "__main__":
     app.run(debug=True, port=8000)
-
